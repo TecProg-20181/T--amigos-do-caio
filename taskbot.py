@@ -10,7 +10,7 @@ import sqlalchemy
 import db
 from db import Task
 
-TOKEN = ""
+TOKEN = "597321744:AAHGVp6Vm3n3J-WSF7w67Cb5rB3J7_GhjLw"
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
 HELP = """
@@ -27,15 +27,18 @@ HELP = """
  /help
 """
 
+
 def get_url(url):
     response = requests.get(url)
     content = response.content.decode("utf8")
     return content
 
+
 def get_json_from_url(url):
     content = get_url(url)
     js = json.loads(content)
     return js
+
 
 def get_updates(offset=None):
     url = URL + "getUpdates?timeout=100"
@@ -44,6 +47,7 @@ def get_updates(offset=None):
     js = get_json_from_url(url)
     return js
 
+
 def send_message(text, chat_id, reply_markup=None):
     text = urllib.parse.quote_plus(text)
     url = URL + "sendMessage?text={}&chat_id={}&parse_mode=Markdown".format(text, chat_id)
@@ -51,12 +55,14 @@ def send_message(text, chat_id, reply_markup=None):
         url += "&reply_markup={}".format(reply_markup)
     get_url(url)
 
+
 def get_last_update_id(updates):
     update_ids = []
     for update in updates["result"]:
         update_ids.append(int(update["update_id"]))
 
     return max(update_ids)
+
 
 def deps_text(task, chat, preceed=''):
     text = ''
@@ -358,4 +364,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
