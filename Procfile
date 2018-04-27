@@ -1,1 +1,1 @@
-web: python taskbot.py
+dyno: python taskbot.py
