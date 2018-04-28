@@ -88,7 +88,6 @@ def deps_text(task, chat, preceed=''):
             line += deps_text(dep, chat, preceed + '│   ')
 
         text += line
-
     return text
 
 
