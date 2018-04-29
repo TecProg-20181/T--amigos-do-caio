@@ -109,11 +109,7 @@ def rename_task(chat,msg):
     else:
         task_id = int(msg)
         query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        try:
-            task = query.one()
-        except sqlalchemy.orm.exc.NoResultFound:
-            send_message("_404_ Task {} not found x.x".format(task_id), chat)
-            return
+        find_id_task(task_id,msg)
 
         if text == '':
             send_message("You want to modify task {}, but you didn't provide any new text".format(task_id), chat)
@@ -131,11 +127,7 @@ def duplicate_task(chat,msg):
     else:
         task_id = int(msg)
         query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        try:
-            task = query.one()
-        except sqlalchemy.orm.exc.NoResultFound:
-            send_message("_404_ Task {} not found x.x".format(task_id), chat)
-            return
+        find_id_task(task_id,msg)
 
         dtask = Task(chat=task.chat, name=task.name, status=task.status, dependencies=task.dependencies,
                      parents=task.parents, priority=task.priority, duedate=task.duedate)
@@ -156,11 +148,8 @@ def delete_task(chat,msg):
     else:
         task_id = int(msg)
         query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        try:
-            task = query.one()
-        except sqlalchemy.orm.exc.NoResultFound:
-            send_message("_404_ Task {} not found x.x".format(task_id), chat)
-            return
+        find_id_task(task_id,msg)
+
         for t in task.dependencies.split(',')[:-1]:
             qy = db.session.query(Task).filter_by(id=int(t), chat=chat)
             t = qy.one()
@@ -175,11 +164,8 @@ def status_task(chat,status,msg):
     else:
         task_id = int(msg)
         query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        try:
-            task = query.one()
-        except sqlalchemy.orm.exc.NoResultFound:
-            send_message("_404_ Task {} not found x.x".format(task_id), chat)
-            return
+        find_id_task(task_id,msg)
+
         task.status = status
         db.session.commit()
         send_message("*{}* task [[{}]] {}".format(status,task.id, task.name), chat)
@@ -232,11 +218,8 @@ def dependeci_task(chat,msg):
     else:
         task_id = int(msg)
         query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        try:
-            task = query.one()
-        except sqlalchemy.orm.exc.NoResultFound:
-            send_message("_404_ Task {} not found x.x".format(task_id), chat)
-            return
+        find_id_task(task_id,msg)
+
 
         if text == '':
             for i in task.dependencies.split(',')[:-1]:
@@ -281,11 +264,7 @@ def priority_task(chat,msg):
     else:
         task_id = int(msg)
         query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        try:
-            task = query.one()
-        except sqlalchemy.orm.exc.NoResultFound:
-            send_message("_404_ Task {} not found x.x".format(task_id), chat)
-            return
+        find_id_task(task_id,msg)
 
         if text == '':
             task.priority = ''
@@ -306,6 +285,17 @@ def help_task(chat):
     send_message("Here is a list of things you can do.", chat)
     send_message(HELP, chat)
 
+
+def find_id_task(task_id,chat):
+    try:
+        task = query.one()
+        return task
+    except sqlalchemy.orm.exc.NoResultFound:
+        send_message("_404_ Task {} not found x.x".format(task_id), chat)
+        return
+
+
+
 def handle_updates(updates):
     for update in updates["result"]:
         if 'message' in update:
@@ -315,8 +305,6 @@ def handle_updates(updates):
         else:
             print('Can\'t process! {}'.format(update))
             return
-
-
 
         command = message["text"].split(" ", 1)[0]
         msg = ''
