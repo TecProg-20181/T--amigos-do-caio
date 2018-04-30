@@ -12,7 +12,7 @@ from db import Task
 
 import os
 
-TOKEN = os.environ['SECRET_TOKEN']
+TOKEN = TOKEN = os.environ['SECRET_TOKEN']
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
 
@@ -193,15 +193,15 @@ def list_task(chat):
     query = db.session.query(Task).filter_by(status='TODO', chat=chat).order_by(Task.id)
     a += '\n\U0001F195 *TODO*\n'
     for task in query.all():
-        a += '[[{}]] {}\n'.format(task.id, task.name)
+        a += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
     query = db.session.query(Task).filter_by(status='DOING', chat=chat).order_by(Task.id)
     a += '\n\U000023FA *DOING*\n'
     for task in query.all():
-        a += '[[{}]] {}\n'.format(task.id, task.name)
+        a += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
     query = db.session.query(Task).filter_by(status='DONE', chat=chat).order_by(Task.id)
     a += '\n\U00002611 *DONE*\n'
     for task in query.all():
-        a += '[[{}]] {}\n'.format(task.id, task.name)
+        a += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
 
     send_message(a, chat)
 
@@ -263,8 +263,9 @@ def priority_task(chat,msg):
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        find_id_task(task_id,msg)
+        task = find_id_task(task_id,msg)
+        if task == False :
+            return
 
         if text == '':
             task.priority = ''
@@ -287,12 +288,15 @@ def help_task(chat):
 
 
 def find_id_task(task_id,chat):
+    query = db.session.query(Task).filter_by(id=task_id, chat=chat)
+
     try:
         task = query.one()
         return task
     except sqlalchemy.orm.exc.NoResultFound:
+        print ("ola")
         send_message("_404_ Task {} not found x.x".format(task_id), chat)
-        return
+        return False
 
 
 
