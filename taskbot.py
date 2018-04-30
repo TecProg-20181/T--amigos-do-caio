@@ -12,7 +12,8 @@ from db import Task
 
 import os
 
-TOKEN = TOKEN = os.environ['SECRET_TOKEN']
+TOKEN = os.environ['SECRET_TOKEN']
+
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
 
@@ -108,9 +109,10 @@ def rename_task(chat,msg):
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        find_id_task(task_id,msg)
+        task = find_id_task(task_id,chat)
 
+        if task == False :
+            return
         if text == '':
             send_message("You want to modify task {}, but you didn't provide any new text".format(task_id), chat)
             return
@@ -127,8 +129,9 @@ def duplicate_task(chat,msg):
     else:
         task_id = int(msg)
         query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        find_id_task(task_id,msg)
-
+        task = find_id_task(task_id,chat)
+        if task == False :
+            return
         dtask = Task(chat=task.chat, name=task.name, status=task.status, dependencies=task.dependencies,
                      parents=task.parents, priority=task.priority, duedate=task.duedate)
         db.session.add(dtask)
@@ -142,13 +145,14 @@ def duplicate_task(chat,msg):
         send_message("New task *TODO* [[{}]] {}".format(dtask.id, dtask.name), chat)
 
 
-def delete_task(chat,msg):
+def delete_task(chat, msg):
     if not msg.isdigit():
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        find_id_task(task_id,msg)
+        task = find_id_task(task_id,chat)
+        if task == False :
+            return
 
         for t in task.dependencies.split(',')[:-1]:
             qy = db.session.query(Task).filter_by(id=int(t), chat=chat)
@@ -163,9 +167,9 @@ def status_task(chat,status,msg):
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        find_id_task(task_id,msg)
-
+        task = find_id_task(task_id,chat)
+        if task == False :
+            return
         task.status = status
         db.session.commit()
         send_message("*{}* task [[{}]] {}".format(status,task.id, task.name), chat)
@@ -217,8 +221,9 @@ def dependeci_task(chat,msg):
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        find_id_task(task_id,msg)
+        task = find_id_task(task_id,chat)
+        if task == False :
+            return
 
 
         if text == '':
@@ -263,7 +268,7 @@ def priority_task(chat,msg):
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        task = find_id_task(task_id,msg)
+        task = find_id_task(task_id,chat)
         if task == False :
             return
 
@@ -287,14 +292,13 @@ def help_task(chat):
     send_message(HELP, chat)
 
 
-def find_id_task(task_id,chat):
+def find_id_task(task_id, chat):
     query = db.session.query(Task).filter_by(id=task_id, chat=chat)
 
     try:
         task = query.one()
         return task
     except sqlalchemy.orm.exc.NoResultFound:
-        print ("ola")
         send_message("_404_ Task {} not found x.x".format(task_id), chat)
         return False
 
