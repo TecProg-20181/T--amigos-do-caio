@@ -12,7 +12,7 @@ from db import Task
 
 import os
 
-TOKEN = '590239234:AAHYixF3whwhw7x8XY-sgfXjBwfWRO3-pXg'
+TOKEN = '467392153:AAG4HvjBx-bsxc0uStrYylntAFBK36Kab-A'
 
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
@@ -68,26 +68,26 @@ def get_last_update_id(updates):
     return max(update_ids)
 
 
-def deps_text(task, chat, preceed=''):
+def deps_text(task, chat, icons, preceed=''):
     text = ''
 
     for i in range(len(task.dependencies.split(',')[:-1])):
         line = preceed
         query = db.session.query(Task).filter_by(id=int(task.dependencies.split(',')[:-1][i]), chat=chat)
-        dep = query.one()
+        dependeci = query.one()
 
-        icon = '\U0001F195'
-        if dep.status == 'DOING':
-            icon = '\U000023FA'
-        elif dep.status == 'DONE':
-            icon = '\U00002611'
+        icon = icons['todo']
+        if dependeci.status == 'DOING':
+            icon = icons['doing']
+        elif dependeci.status == 'DONE':
+            icon = icons['done']
 
         if i + 1 == len(task.dependencies.split(',')[:-1]):
-            line += '└── [[{}]] {} {}\n'.format(dep.id, icon, dep.name)
-            line += deps_text(dep, chat, preceed + '    ')
+            line += '└── [[{}]] {} {}\n'.format(dependeci.id, icon, dependeci.name)
+            line += deps_text(dependeci, chat, preceed + '    ')
         else:
-            line += '├── [[{}]] {} {}\n'.format(dep.id, icon, dep.name)
-            line += deps_text(dep, chat, preceed + '│   ')
+            line += '├── [[{}]] {} {}\n'.format(dependeci.id, icon, dependeci.name)
+            line += deps_text(dependeci, chat, preceed + '│   ')
 
         text += line
     return text
@@ -135,17 +135,17 @@ def duplicate_task(chat, msg):
         if task is False:
             return
 
-        dtask = Task(chat=task.chat, name=task.name, status=task.status, dependencies=task.dependencies,
+        duplicated_task = Task(chat=task.chat, name=task.name, status=task.status, dependencies=task.dependencies,
                      parents=task.parents, priority=task.priority, duedate=task.duedate)
-        db.session.add(dtask)
+        db.session.add(duplicated_task)
 
-        for t in task.dependencies.split(',')[:-1]:
-            qy = db.session.query(Task).filter_by(id=int(t), chat=chat)
-            t = qy.one()
-            t.parents += '{},'.format(dtask.id)
+        for tasks in task.dependencies.split(',')[:-1]:
+            query = db.session.query(Task).filter_by(id=int(tasks), chat=chat)
+            tasks = query.one()
+            tasks.parents += '{},'.format(duplicated_task.id)
 
         db.session.commit()
-        send_message("New task *TODO* [[{}]] {}".format(dtask.id, dtask.name), chat)
+        send_message("New task *TODO* [[{}]] {}".format(duplicated_task.id, duplicated_task.name), chat)
 
 
 def delete_task(chat, msg):
@@ -158,10 +158,10 @@ def delete_task(chat, msg):
         if task is False:
             return
 
-        for t in task.dependencies.split(',')[:-1]:
-            qy = db.session.query(Task).filter_by(id=int(t), chat=chat)
-            t = qy.one()
-            t.parents = t.parents.replace('{},'.format(task.id), '')
+        for tasks in task.dependencies.split(',')[:-1]:
+            query = db.session.query(Task).filter_by(id=int(tasks), chat=chat)
+            tasks = query.one()
+            tasks.parents = tasks.parents.replace('{},'.format(task.id), '')
         db.session.delete(task)
         db.session.commit()
         send_message("Task [[{}]] deleted".format(task_id), chat)
@@ -182,40 +182,40 @@ def status_task(chat, status, msg):
         send_message("*{}* task [[{}]] {}".format(status, task.id, task.name), chat)
 
 
-def list_task(chat):
-    a = ''
-    a += '\U0001F4CB Task List\n'
+def list_task(chat,icons):
+    list = ''
+    list += '{} Task List\n'.format(icons['status_list'])
 
     query = db.session.query(Task).filter_by(parents='', chat=chat).order_by(Task.id)
 
     for task in query.all():
-        icon = '\U0001F195'
+        icon = icons['todo']
         if task.status == 'DOING':
-            icon = '\U000023FA'
+            icon = icons['doing']
         elif task.status == 'DONE':
-            icon = '\U00002611'
+            icon = icons['done']
 
-        a += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
-        a += deps_text(task, chat)
+        list += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
+        list += deps_text(task, chat,icons)
 
-    send_message(a, chat)
-    a = ''
+    send_message(list, chat)
+    list = ''
 
-    a += '\U0001F4DD _Status_\n'
+    list += '{} _Status_\n'.format(icons['status_list'])
     query = db.session.query(Task).filter_by(status='TODO', chat=chat).order_by(Task.id)
-    a += '\n\U0001F195 *TODO*\n'
+    list += '\n{} *TODO*\n'.format(icons['todo'])
     for task in query.all():
-        a += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
+        list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
     query = db.session.query(Task).filter_by(status='DOING', chat=chat).order_by(Task.id)
-    a += '\n\U000023FA *DOING*\n'
+    list += '\n{} *DOING*\n'.format(icons['doing'])
     for task in query.all():
-        a += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
+        list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
     query = db.session.query(Task).filter_by(status='DONE', chat=chat).order_by(Task.id)
-    a += '\n\U00002611 *DONE*\n'
+    list += '\n{} *DONE*\n'.format(icons['done'])
     for task in query.all():
-        a += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
+        list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
 
-    send_message(a, chat)
+    send_message(list, chat)
 
 
 def dependeci_task(chat, msg):
@@ -234,31 +234,31 @@ def dependeci_task(chat, msg):
             return
 
         if text == '':
-            for i in task.dependencies.split(',')[:-1]:
-                i = int(i)
-                q = db.session.query(Task).filter_by(id=i, chat=chat)
-                t = q.one()
-                t.parents = t.parents.replace('{},'.format(task.id), '')
+            for ids in task.dependencies.split(',')[:-1]:
+                ids = int(ids)
+                query = db.session.query(Task).filter_by(id=i, chat=chat)
+                tasks = query.one()
+                tasks.parents = tasks.parents.replace('{},'.format(task.id), '')
 
             task.dependencies = ''
             send_message("Dependencies removed from task {}".format(task_id), chat)
         else:
-            for depid in text.split(' '):
-                if not depid.isdigit():
+            for dependeci_id in text.split(' '):
+                if not dependeci_id.isdigit():
                     send_message("All dependencies ids must be numeric, and not {}".format(depid), chat)
                 else:
-                    depid = int(depid)
-                    query = db.session.query(Task).filter_by(id=depid, chat=chat)
+                    dependeci_id = int(dependeci_id)
+                    query = db.session.query(Task).filter_by(id=dependeci_id, chat=chat)
                     try:
-                        taskdep = query.one()
-                        taskdep.parents += str(task.id) + ','
+                        task_dependeci = query.one()
+                        task_dependeci.parents += str(task.id) + ','
                     except sqlalchemy.orm.exc.NoResultFound:
                         send_message("_404_ Task {} not found x.x".format(depid), chat)
                         continue
 
-                    deplist = task.dependencies.split(',')
-                    if str(depid) not in deplist:
-                        task.dependencies += str(depid) + ','
+                    dependeci_list = task.dependencies.split(',')
+                    if str(dependeci_id) not in dependeci_list:
+                        task.dependencies += str(dependeci_id) + ','
 
         db.session.commit()
         send_message("Task {} dependencies up to date".format(task_id), chat)
@@ -290,6 +290,7 @@ def priority_task(chat, msg):
                 send_message("*Task {}* priority has priority *{}*".format(task_id, text.lower()), chat)
         db.session.commit()
 
+
 def find_id_task(task_id, chat):
     query = db.session.query(Task).filter_by(id=task_id, chat=chat)
 
@@ -302,6 +303,8 @@ def find_id_task(task_id, chat):
 
 
 def handle_updates(updates):
+    icons = {'todo':'\U0001F195','doing':'\U000023FA','done':'\U00002611','status':'\U0001F4DD','status_list': '\U0001F4CB'}
+
     for update in updates["result"]:
         if 'message' in update:
             message = update['message']
@@ -346,7 +349,7 @@ def handle_updates(updates):
             status_task(chat, status, msg)
 
         elif command == '/list':
-            list_task(chat)
+            list_task(chat,icons)
 
         elif command == '/dependson':
             dependeci_task(chat, msg)
