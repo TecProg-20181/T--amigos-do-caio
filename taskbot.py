@@ -12,7 +12,7 @@ from db import Task
 
 import os
 
-TOKEN = os.environ['SECRET_TOKEN']
+TOKEN = '590239234:AAHYixF3whwhw7x8XY-sgfXjBwfWRO3-pXg'
 
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
@@ -320,6 +320,7 @@ def handle_updates(updates):
             msg = message["text"].split(" ", 1)[1].strip()
 
         chat = message["chat"]["id"]
+        user = message["chat"]["first_name"]
 
         print(command, msg, chat)
 
@@ -362,7 +363,7 @@ def handle_updates(updates):
         elif command == '/help':
             help_task(chat)
         else:
-            send_message("I'm sorry dave. I'm afraid I can't do that.", chat)
+            send_message("I'm sorry {}. I'm afraid I can't do that.".format(user), chat)
 
 
 def main():
