@@ -92,13 +92,15 @@ def deps_text(task, chat, preceed=''):
         text += line
     return text
 
-def new_task(chat,msg):
+
+def new_task(chat, msg):
     task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
     db.session.add(task)
     db.session.commit()
     send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
 
-def rename_task(chat,msg):
+
+def rename_task(chat, msg):
     text = ''
     if msg != '':
         if len(msg.split(' ', 1)) > 1:
@@ -109,9 +111,9 @@ def rename_task(chat,msg):
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        task = find_id_task(task_id,chat)
+        task = find_id_task(task_id, chat)
 
-        if task == False :
+        if task is False:
             return
         if text == '':
             send_message("You want to modify task {}, but you didn't provide any new text".format(task_id), chat)
@@ -123,15 +125,16 @@ def rename_task(chat,msg):
         send_message("Task {} redefined from {} to {}".format(task_id, old_text, text), chat)
 
 
-def duplicate_task(chat,msg):
+def duplicate_task(chat, msg):
     if not msg.isdigit():
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-        task = find_id_task(task_id,chat)
-        if task == False :
+        task = find_id_task(task_id, chat)
+
+        if task is False:
             return
+
         dtask = Task(chat=task.chat, name=task.name, status=task.status, dependencies=task.dependencies,
                      parents=task.parents, priority=task.priority, duedate=task.duedate)
         db.session.add(dtask)
@@ -150,8 +153,9 @@ def delete_task(chat, msg):
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        task = find_id_task(task_id,chat)
-        if task == False :
+        task = find_id_task(task_id, chat)
+
+        if task is False:
             return
 
         for t in task.dependencies.split(',')[:-1]:
@@ -162,24 +166,28 @@ def delete_task(chat, msg):
         db.session.commit()
         send_message("Task [[{}]] deleted".format(task_id), chat)
 
-def status_task(chat,status,msg):
+
+def status_task(chat, status, msg):
     if not msg.isdigit():
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        task = find_id_task(task_id,chat)
-        if task == False :
+        task = find_id_task(task_id, chat)
+
+        if task is False:
             return
+
         task.status = status
         db.session.commit()
-        send_message("*{}* task [[{}]] {}".format(status,task.id, task.name), chat)
+        send_message("*{}* task [[{}]] {}".format(status, task.id, task.name), chat)
 
 
 def list_task(chat):
     a = ''
-
     a += '\U0001F4CB Task List\n'
+
     query = db.session.query(Task).filter_by(parents='', chat=chat).order_by(Task.id)
+
     for task in query.all():
         icon = '\U0001F195'
         if task.status == 'DOING':
@@ -210,7 +218,7 @@ def list_task(chat):
     send_message(a, chat)
 
 
-def dependeci_task(chat,msg):
+def dependeci_task(chat, msg):
     text = ''
     if msg != '':
         if len(msg.split(' ', 1)) > 1:
@@ -221,10 +229,9 @@ def dependeci_task(chat,msg):
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        task = find_id_task(task_id,chat)
-        if task == False :
+        task = find_id_task(task_id, chat)
+        if task is False:
             return
-
 
         if text == '':
             for i in task.dependencies.split(',')[:-1]:
@@ -257,7 +264,7 @@ def dependeci_task(chat,msg):
         send_message("Task {} dependencies up to date".format(task_id), chat)
 
 
-def priority_task(chat,msg):
+def priority_task(chat, msg):
     text = ''
     if msg != '':
         if len(msg.split(' ', 1)) > 1:
@@ -268,8 +275,8 @@ def priority_task(chat,msg):
         send_message("You must inform the task id", chat)
     else:
         task_id = int(msg)
-        task = find_id_task(task_id,chat)
-        if task == False :
+        task = find_id_task(task_id, chat)
+        if task is False:
             return
 
         if text == '':
@@ -283,9 +290,11 @@ def priority_task(chat,msg):
                 send_message("*Task {}* priority has priority *{}*".format(task_id, text.lower()), chat)
         db.session.commit()
 
+
 def start_task(chat):
     send_message("Welcome! Here is a list of things you can do.", chat)
     send_message(HELP, chat)
+
 
 def help_task(chat):
     send_message("Here is a list of things you can do.", chat)
@@ -301,7 +310,6 @@ def find_id_task(task_id, chat):
     except sqlalchemy.orm.exc.NoResultFound:
         send_message("_404_ Task {} not found x.x".format(task_id), chat)
         return False
-
 
 
 def handle_updates(updates):
@@ -324,37 +332,37 @@ def handle_updates(updates):
         print(command, msg, chat)
 
         if command == '/new':
-            new_task(chat,msg)
+            new_task(chat, msg)
 
         elif command == '/rename':
-            rename_task(chat,msg)
+            rename_task(chat, msg)
 
         elif command == '/duplicate':
-            duplicate_task(chat,msg)
+            duplicate_task(chat, msg)
 
         elif command == '/delete':
-            delete_task(chat,msg)
+            delete_task(chat, msg)
 
         elif command == '/todo':
             status = 'TODO'
-            status_task(chat,status,msg)
+            status_task(chat, status, msg)
 
         elif command == '/doing':
             status = 'DOING'
-            status_task(chat,status,msg)
+            status_task(chat, status, msg)
 
         elif command == '/done':
             status = 'DONE'
-            status_task(chat,status,msg)
+            status_task(chat, status, msg)
 
         elif command == '/list':
             list_task(chat)
 
         elif command == '/dependson':
-            dependeci_task(chat,msg)
+            dependeci_task(chat, msg)
 
         elif command == '/priority':
-            priority_task(chat,msg)
+            priority_task(chat, msg)
 
         elif command == '/start':
             start_task(chat)
