@@ -12,7 +12,8 @@ from db import Task
 
 import os
 
-TOKEN = os.environ['SECRET_TOKEN']
+# TOKEN = os.environ['SECRET_TOKEN']
+TOKEN = "590239234:AAHYixF3whwhw7x8XY-sgfXjBwfWRO3-pXg"
 
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
@@ -290,17 +291,6 @@ def priority_task(chat, msg):
                 send_message("*Task {}* priority has priority *{}*".format(task_id, text.lower()), chat)
         db.session.commit()
 
-
-def start_task(chat):
-    send_message("Welcome! Here is a list of things you can do.", chat)
-    send_message(HELP, chat)
-
-
-def help_task(chat):
-    send_message("Here is a list of things you can do.", chat)
-    send_message(HELP, chat)
-
-
 def find_id_task(task_id, chat):
     query = db.session.query(Task).filter_by(id=task_id, chat=chat)
 
@@ -364,11 +354,10 @@ def handle_updates(updates):
         elif command == '/priority':
             priority_task(chat, msg)
 
-        elif command == '/start':
-            start_task(chat)
+        elif command == '/start' or command == '/help':
+            send_message("Here is a list of things you can do.", chat)
+            send_message(HELP, chat)
 
-        elif command == '/help':
-            help_task(chat)
         else:
             send_message("I'm sorry dave. I'm afraid I can't do that.", chat)
 
