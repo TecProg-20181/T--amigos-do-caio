@@ -12,8 +12,7 @@ from db import Task
 
 import os
 
-# TOKEN = os.environ['SECRET_TOKEN']
-TOKEN = "590239234:AAHYixF3whwhw7x8XY-sgfXjBwfWRO3-pXg"
+TOKEN = os.environ['SECRET_TOKEN']
 
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
