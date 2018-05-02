@@ -309,6 +309,8 @@ def find_id_task(task_id, chat):
 def extract_useful_info(message):
     if "text" not in message.keys():
         message["text"] = "/start"
+
+    if "first_name" not in message["chat"].keys():
         message["chat"]["first_name"] = "Grupo"
 
     command = message["text"].split(" ", 1)[0]
