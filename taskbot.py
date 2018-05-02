@@ -12,9 +12,11 @@ from db import Task
 
 import os
 
-STATUS_COMMANDS = ['/todo', '/doing', '/done']
 TOKEN = os.environ['SECRET_TOKEN']
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
+
+STATUS_COMMANDS = ['/todo', '/doing', '/done']
+
 ICONS = {
     'TODO': '\U0001F195',
     'DOING': '\U000023FA',
@@ -22,6 +24,7 @@ ICONS = {
     'status': '\U0001F4DD',
     'status_list': '\U0001F4CB'
 }
+
 HELP = """
  /new NOME
  /todo ID
@@ -304,6 +307,9 @@ def find_id_task(task_id, chat):
 
 
 def extract_useful_info(message):
+    if "text" not in message.keys():
+        message["text"] = "/start"
+
     command = message["text"].split(" ", 1)[0]
     chat = message["chat"]["id"]
     user = message["chat"]["first_name"]
