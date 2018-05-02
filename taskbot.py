@@ -12,7 +12,7 @@ from db import Task
 
 import os
 
-TOKEN = '590239234:AAHYixF3whwhw7x8XY-sgfXjBwfWRO3-pXg'
+TOKEN = '467392153:AAG4HvjBx-bsxc0uStrYylntAFBK36Kab-A'
 
 ICONS = {
     'todo': '\U0001F195',
@@ -211,20 +211,23 @@ def list_task(chat):
     list = ''
 
     list += '{} _Status_\n'.format(ICONS['status_list'])
-    query = db.session.query(Task).filter_by(status='TODO', chat=chat).order_by(Task.id)
+    query = create_list('TODO',chat)
     list += '\n{} *TODO*\n'.format(ICONS['todo'])
     for task in query.all():
         list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
-    query = db.session.query(Task).filter_by(status='DOING', chat=chat).order_by(Task.id)
+    query = create_list('DOING',chat)
     list += '\n{} *DOING*\n'.format(ICONS['doing'])
     for task in query.all():
         list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
-    query = db.session.query(Task).filter_by(status='DONE', chat=chat).order_by(Task.id)
+    query = create_list('DONE',chat)
     list += '\n{} *DONE*\n'.format(ICONS['done'])
     for task in query.all():
         list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
 
     send_message(list, chat)
+
+def create_list(status,chat):
+    return db.session.query(Task).filter_by(status= status, chat=chat).order_by(Task.id)
 
 
 def dependeci_task(chat, msg):
