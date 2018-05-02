@@ -12,9 +12,16 @@ from db import Task
 
 import os
 
+STATUS_COMMANDS = ['/todo', '/doing', '/done']
 TOKEN = os.environ['SECRET_TOKEN']
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
-
+ICONS = {
+    'TODO': '\U0001F195',
+    'DOING': '\U000023FA',
+    'DONE': '\U00002611',
+    'status': '\U0001F4DD',
+    'status_list': '\U0001F4CB'
+}
 HELP = """
  /new NOME
  /todo ID
@@ -72,23 +79,240 @@ def deps_text(task, chat, preceed=''):
     for i in range(len(task.dependencies.split(',')[:-1])):
         line = preceed
         query = db.session.query(Task).filter_by(id=int(task.dependencies.split(',')[:-1][i]), chat=chat)
-        dep = query.one()
+        dependeci = query.one()
 
-        icon = '\U0001F195'
-        if dep.status == 'DOING':
-            icon = '\U000023FA'
-        elif dep.status == 'DONE':
-            icon = '\U00002611'
+        icon = ICONS[dependeci.status]
 
         if i + 1 == len(task.dependencies.split(',')[:-1]):
-            line += '└── [[{}]] {} {}\n'.format(dep.id, icon, dep.name)
-            line += deps_text(dep, chat, preceed + '    ')
+            line += '└── [[{}]] {} {}\n'.format(dependeci.id, icon, dependeci.name)
+            line += deps_text(dependeci, chat, preceed + '    ')
         else:
-            line += '├── [[{}]] {} {}\n'.format(dep.id, icon, dep.name)
-            line += deps_text(dep, chat, preceed + '│   ')
+            line += '├── [[{}]] {} {}\n'.format(dependeci.id, icon, dependeci.name)
+            line += deps_text(dependeci, chat, preceed + '│   ')
 
         text += line
     return text
+
+
+def new_task(chat, msg):
+    task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
+    db.session.add(task)
+    db.session.commit()
+    send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
+
+
+def rename_task(chat, msg):
+    text = ''
+    if msg != '':
+        if len(msg.split(' ', 1)) > 1:
+            text = msg.split(' ', 1)[1]
+        msg = msg.split(' ', 1)[0]
+
+        task = find_id_task(msg, chat)
+
+        if task is False:
+            return
+        if text == '':
+            send_message("You want to modify task {}, but you didn't provide any new text".format(task_id), chat)
+            return
+
+        old_text = task.name
+        task.name = text
+        db.session.commit()
+        send_message("Task {} redefined from {} to {}".format(task.id, old_text, text), chat)
+
+
+def duplicate_task(chat, msg):
+        task = find_id_task(msg, chat)
+
+        if task is False:
+            return
+
+        duplicated_task = Task(chat=task.chat, name=task.name, status=task.status, dependencies=task.dependencies,
+                     parents=task.parents, priority=task.priority, duedate=task.duedate)
+        db.session.add(duplicated_task)
+
+        for tasks in task.dependencies.split(',')[:-1]:
+            query = db.session.query(Task).filter_by(id=int(tasks), chat=chat)
+            tasks = query.one()
+            tasks.parents += '{},'.format(duplicated_task.id)
+
+        db.session.commit()
+        send_message("New task *TODO* [[{}]] {}".format(duplicated_task.id, duplicated_task.name), chat)
+
+
+def delete_task(chat, msg):
+        task = find_id_task(msg, chat)
+
+        if task is False:
+            return
+
+        for tasks in task.dependencies.split(',')[:-1]:
+            query = db.session.query(Task).filter_by(id=int(tasks), chat=chat)
+            tasks = query.one()
+            tasks.parents = tasks.parents.replace('{},'.format(task.id), '')
+        db.session.delete(task)
+        db.session.commit()
+        send_message("Task [[{}]] deleted".format(task.id), chat)
+
+
+def status_task(chat, status, msg):
+        task = find_id_task(msg, chat)
+
+        if task is False:
+            return
+
+        task.status = status
+        db.session.commit()
+        send_message("*{}* task [[{}]] {}".format(status, task.id, task.name), chat)
+
+
+def list_task(chat):
+    list = ''
+    list += '{} Task List\n'.format(ICONS['status_list'])
+
+    query = db.session.query(Task).filter_by(parents='', chat=chat).order_by(Task.id)
+
+    for task in query.all():
+        icon = ICONS[task.status]
+
+        list += '[[{}]] {} {} *{}*\n'.format(task.id, icon, task.name, task.priority)
+        list += deps_text(task, chat)
+
+    send_message(list, chat)
+    list = ''
+
+    list += '{} _Status_\n'.format(ICONS['status_list'])
+    query = create_list('TODO', chat)
+    list += '\n{} *TODO*\n'.format(ICONS['TODO'])
+    for task in query.all():
+        list += '[[{}]] {} *{}*\n'.format(task.id, task.name, task.priority)
+    query = create_list('DOING', chat)
+    list += '\n{} *DOING*\n'.format(ICONS['DOING'])
+    for task in query.all():
+        list += '[[{}]] {} *{}*\n'.format(task.id, task.name, task.priority)
+    query = create_list('DONE', chat)
+    list += '\n{} *DONE*\n'.format(ICONS['DONE'])
+    for task in query.all():
+        list += '[[{}]] {} *{}*\n'.format(task.id, task.name, task.priority)
+
+    send_message(list, chat)
+
+
+def create_list(status, chat):
+    return db.session.query(Task).filter_by(status=status, chat=chat).order_by(Task.id)
+
+
+def dependeci_task(chat, msg):
+    text = ''
+    if msg != '':
+        if len(msg.split(' ', 1)) > 1:
+            text = msg.split(' ', 1)[1]
+        msg = msg.split(' ', 1)[0]
+        task = find_id_task(msg, chat)
+
+        if task is False:
+            return
+
+        if text == '':
+            for i in task.dependencies.split(',')[:-1]:
+                i = int(i)
+                query = db.session.query(Task).filter_by(id=i, chat=chat)
+                tasks = query.one()
+                tasks.parents = tasks.parents.replace('{},'.format(task.id), '')
+
+            task.dependencies = ''
+            send_message("Dependencies removed from task {}".format(task_id), chat)
+        else:
+            for dependeci_id in text.split(' '):
+                if not dependeci_id.isdigit():
+                    send_message("All dependencies ids must be numeric, and not {}".format(dependeci_id), chat)
+                elif int(dependeci_id) == task.id:
+                    send_message("I'm sorry. Invalid operation.", chat)
+
+                elif verify_circle_referece(task.id, dependeci_id, chat):
+                    send_message("I'm sorry. This operation generates circle reference", chat)
+
+                else:
+                    dependeci_id = int(dependeci_id)
+                    query = db.session.query(Task).filter_by(id=dependeci_id, chat=chat)
+                    try:
+                        task_dependeci = query.one()
+                        task_dependeci.parents += str(task.id) + ','
+                    except sqlalchemy.orm.exc.NoResultFound:
+                        send_message("_404_ Task {} not found x.x".format(dependeci_id), chat)
+                        continue
+
+                    dependeci_list = task.dependencies.split(',')
+                    if str(dependeci_id) not in dependeci_list:
+                        task.dependencies += str(dependeci_id) + ','
+
+        db.session.commit()
+        send_message("Task {} dependencies up to date".format(msg), chat)
+
+
+def verify_circle_referece(task_id, dependeci_id, chat):
+
+    task = find_id_task(str(task_id), chat)
+    if task is False:
+        return True
+    if str(dependeci_id) in task.parents.split(',')[:-1]:
+        return True
+    for i in task.parents.split(',')[:-1]:
+        if verify_circle_referece(i, dependeci_id, chat):
+            return True
+    return False
+
+
+def priority_task(chat, msg):
+    text = ''
+    if msg != '':
+        if len(msg.split(' ', 1)) > 1:
+            text = msg.split(' ', 1)[1]
+        msg = msg.split(' ', 1)[0]
+
+        task = find_id_task(msg, chat)
+        if task is False:
+            return
+
+        if text == '':
+            task.priority = ''
+            send_message("_Cleared_ all priorities from task {}".format(task_id), chat)
+        else:
+            if text.lower() not in ['high', 'medium', 'low']:
+                send_message("The priority *must be* one of the following: high, medium, low", chat)
+            else:
+                task.priority = text.lower()
+                send_message("*Task {}* priority has priority *{}*".format(task.id, text.lower()), chat)
+        db.session.commit()
+
+
+def find_id_task(task_id, chat):
+    if not task_id.isdigit():
+        send_message("You must inform the task id", chat)
+        return False
+
+    task_id = int(task_id)
+    query = db.session.query(Task).filter_by(id=task_id, chat=chat)
+
+    try:
+        task = query.one()
+        return task
+    except sqlalchemy.orm.exc.NoResultFound:
+        send_message("_404_ Task {} not found x.x".format(task_id), chat)
+        return False
+
+
+def extract_useful_info(message):
+    command = message["text"].split(" ", 1)[0]
+    chat = message["chat"]["id"]
+    user = message["chat"]["first_name"]
+
+    msg = ''
+    if len(message["text"].split(" ", 1)) > 1:
+        msg = message["text"].split(" ", 1)[1].strip()
+
+    return command, msg, chat, user
 
 
 def handle_updates(updates):
@@ -101,254 +325,41 @@ def handle_updates(updates):
             print('Can\'t process! {}'.format(update))
             return
 
-
-
-        command = message["text"].split(" ", 1)[0]
-        msg = ''
-        if len(message["text"].split(" ", 1)) > 1:
-            msg = message["text"].split(" ", 1)[1].strip()
-
-        chat = message["chat"]["id"]
+        command, msg, chat, user = extract_useful_info(message)
 
         print(command, msg, chat)
 
         if command == '/new':
-            task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
-            db.session.add(task)
-            db.session.commit()
-            send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
+            new_task(chat, msg)
 
         elif command == '/rename':
-            text = ''
-            if msg != '':
-                if len(msg.split(' ', 1)) > 1:
-                    text = msg.split(' ', 1)[1]
-                msg = msg.split(' ', 1)[0]
+            rename_task(chat, msg)
 
-            if not msg.isdigit():
-                send_message("You must inform the task id", chat)
-            else:
-                task_id = int(msg)
-                query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-                try:
-                    task = query.one()
-                except sqlalchemy.orm.exc.NoResultFound:
-                    send_message("_404_ Task {} not found x.x".format(task_id), chat)
-                    return
-
-                if text == '':
-                    send_message("You want to modify task {}, but you didn't provide any new text".format(task_id), chat)
-                    return
-
-                old_text = task.name
-                task.name = text
-                db.session.commit()
-                send_message("Task {} redefined from {} to {}".format(task_id, old_text, text), chat)
         elif command == '/duplicate':
-            if not msg.isdigit():
-                send_message("You must inform the task id", chat)
-            else:
-                task_id = int(msg)
-                query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-                try:
-                    task = query.one()
-                except sqlalchemy.orm.exc.NoResultFound:
-                    send_message("_404_ Task {} not found x.x".format(task_id), chat)
-                    return
-
-                dtask = Task(chat=task.chat, name=task.name, status=task.status, dependencies=task.dependencies,
-                             parents=task.parents, priority=task.priority, duedate=task.duedate)
-                db.session.add(dtask)
-
-                for t in task.dependencies.split(',')[:-1]:
-                    qy = db.session.query(Task).filter_by(id=int(t), chat=chat)
-                    t = qy.one()
-                    t.parents += '{},'.format(dtask.id)
-
-                db.session.commit()
-                send_message("New task *TODO* [[{}]] {}".format(dtask.id, dtask.name), chat)
+            duplicate_task(chat, msg)
 
         elif command == '/delete':
-            if not msg.isdigit():
-                send_message("You must inform the task id", chat)
-            else:
-                task_id = int(msg)
-                query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-                try:
-                    task = query.one()
-                except sqlalchemy.orm.exc.NoResultFound:
-                    send_message("_404_ Task {} not found x.x".format(task_id), chat)
-                    return
-                for t in task.dependencies.split(',')[:-1]:
-                    qy = db.session.query(Task).filter_by(id=int(t), chat=chat)
-                    t = qy.one()
-                    t.parents = t.parents.replace('{},'.format(task.id), '')
-                db.session.delete(task)
-                db.session.commit()
-                send_message("Task [[{}]] deleted".format(task_id), chat)
+            delete_task(chat, msg)
 
-        elif command == '/todo':
-            if not msg.isdigit():
-                send_message("You must inform the task id", chat)
-            else:
-                task_id = int(msg)
-                query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-                try:
-                    task = query.one()
-                except sqlalchemy.orm.exc.NoResultFound:
-                    send_message("_404_ Task {} not found x.x".format(task_id), chat)
-                    return
-                task.status = 'TODO'
-                db.session.commit()
-                send_message("*TODO* task [[{}]] {}".format(task.id, task.name), chat)
-
-        elif command == '/doing':
-            if not msg.isdigit():
-                send_message("You must inform the task id", chat)
-            else:
-                task_id = int(msg)
-                query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-                try:
-                    task = query.one()
-                except sqlalchemy.orm.exc.NoResultFound:
-                    send_message("_404_ Task {} not found x.x".format(task_id), chat)
-                    return
-                task.status = 'DOING'
-                db.session.commit()
-                send_message("*DOING* task [[{}]] {}".format(task.id, task.name), chat)
-
-        elif command == '/done':
-            if not msg.isdigit():
-                send_message("You must inform the task id", chat)
-            else:
-                task_id = int(msg)
-                query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-                try:
-                    task = query.one()
-                except sqlalchemy.orm.exc.NoResultFound:
-                    send_message("_404_ Task {} not found x.x".format(task_id), chat)
-                    return
-                task.status = 'DONE'
-                db.session.commit()
-                send_message("*DONE* task [[{}]] {}".format(task.id, task.name), chat)
+        elif command in STATUS_COMMANDS:
+            status = command.replace(command, command.upper().replace('/', ''))
+            status_task(chat, status, msg)
 
         elif command == '/list':
-            a = ''
+            list_task(chat)
 
-            a += '\U0001F4CB Task List\n'
-            query = db.session.query(Task).filter_by(parents='', chat=chat).order_by(Task.id)
-            for task in query.all():
-                icon = '\U0001F195'
-                if task.status == 'DOING':
-                    icon = '\U000023FA'
-                elif task.status == 'DONE':
-                    icon = '\U00002611'
-
-                a += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
-                a += deps_text(task, chat)
-
-            send_message(a, chat)
-            a = ''
-
-            a += '\U0001F4DD _Status_\n'
-            query = db.session.query(Task).filter_by(status='TODO', chat=chat).order_by(Task.id)
-            a += '\n\U0001F195 *TODO*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-            query = db.session.query(Task).filter_by(status='DOING', chat=chat).order_by(Task.id)
-            a += '\n\U000023FA *DOING*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-            query = db.session.query(Task).filter_by(status='DONE', chat=chat).order_by(Task.id)
-            a += '\n\U00002611 *DONE*\n'
-            for task in query.all():
-                a += '[[{}]] {}\n'.format(task.id, task.name)
-
-            send_message(a, chat)
         elif command == '/dependson':
-            text = ''
-            if msg != '':
-                if len(msg.split(' ', 1)) > 1:
-                    text = msg.split(' ', 1)[1]
-                msg = msg.split(' ', 1)[0]
+            dependeci_task(chat, msg)
 
-            if not msg.isdigit():
-                send_message("You must inform the task id", chat)
-            else:
-                task_id = int(msg)
-                query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-                try:
-                    task = query.one()
-                except sqlalchemy.orm.exc.NoResultFound:
-                    send_message("_404_ Task {} not found x.x".format(task_id), chat)
-                    return
-
-                if text == '':
-                    for i in task.dependencies.split(',')[:-1]:
-                        i = int(i)
-                        q = db.session.query(Task).filter_by(id=i, chat=chat)
-                        t = q.one()
-                        t.parents = t.parents.replace('{},'.format(task.id), '')
-
-                    task.dependencies = ''
-                    send_message("Dependencies removed from task {}".format(task_id), chat)
-                else:
-                    for depid in text.split(' '):
-                        if not depid.isdigit():
-                            send_message("All dependencies ids must be numeric, and not {}".format(depid), chat)
-                        else:
-                            depid = int(depid)
-                            query = db.session.query(Task).filter_by(id=depid, chat=chat)
-                            try:
-                                taskdep = query.one()
-                                taskdep.parents += str(task.id) + ','
-                            except sqlalchemy.orm.exc.NoResultFound:
-                                send_message("_404_ Task {} not found x.x".format(depid), chat)
-                                continue
-
-                            deplist = task.dependencies.split(',')
-                            if str(depid) not in deplist:
-                                task.dependencies += str(depid) + ','
-
-                db.session.commit()
-                send_message("Task {} dependencies up to date".format(task_id), chat)
         elif command == '/priority':
-            text = ''
-            if msg != '':
-                if len(msg.split(' ', 1)) > 1:
-                    text = msg.split(' ', 1)[1]
-                msg = msg.split(' ', 1)[0]
+            priority_task(chat, msg)
 
-            if not msg.isdigit():
-                send_message("You must inform the task id", chat)
-            else:
-                task_id = int(msg)
-                query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-                try:
-                    task = query.one()
-                except sqlalchemy.orm.exc.NoResultFound:
-                    send_message("_404_ Task {} not found x.x".format(task_id), chat)
-                    return
-
-                if text == '':
-                    task.priority = ''
-                    send_message("_Cleared_ all priorities from task {}".format(task_id), chat)
-                else:
-                    if text.lower() not in ['high', 'medium', 'low']:
-                        send_message("The priority *must be* one of the following: high, medium, low", chat)
-                    else:
-                        task.priority = text.lower()
-                        send_message("*Task {}* priority has priority *{}*".format(task_id, text.lower()), chat)
-                db.session.commit()
-
-        elif command == '/start':
-            send_message("Welcome! Here is a list of things you can do.", chat)
-            send_message(HELP, chat)
-        elif command == '/help':
+        elif command == '/start' or command == '/help':
             send_message("Here is a list of things you can do.", chat)
             send_message(HELP, chat)
+
         else:
-            send_message("I'm sorry dave. I'm afraid I can't do that.", chat)
+            send_message("I'm sorry {}. I'm afraid I can't do that.".format(user), chat)
 
 
 def main():
