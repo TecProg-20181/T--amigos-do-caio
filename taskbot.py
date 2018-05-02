@@ -13,9 +13,8 @@ from db import Task
 import os
 
 STATUS_COMMANDS = ['/todo', '/doing', '/done']
-
-TOKEN = '590239234:AAHYixF3whwhw7x8XY-sgfXjBwfWRO3-pXg'
-
+TOKEN = os.environ['SECRET_TOKEN']
+URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 ICONS = {
     'TODO': '\U0001F195',
     'DOING': '\U000023FA',
@@ -23,11 +22,6 @@ ICONS = {
     'status': '\U0001F4DD',
     'status_list': '\U0001F4CB'
 }
-
-
-URL = "https://api.telegram.org/bot{}/".format(TOKEN)
-
-
 HELP = """
  /new NOME
  /todo ID
@@ -125,7 +119,7 @@ def rename_task(chat, msg):
         old_text = task.name
         task.name = text
         db.session.commit()
-        send_message("Task {} redefined from {} to {}".format(task_id, old_text, text), chat)
+        send_message("Task {} redefined from {} to {}".format(task.id, old_text, text), chat)
 
 
 def duplicate_task(chat, msg):
@@ -159,7 +153,7 @@ def delete_task(chat, msg):
             tasks.parents = tasks.parents.replace('{},'.format(task.id), '')
         db.session.delete(task)
         db.session.commit()
-        send_message("Task [[{}]] deleted".format(task_id), chat)
+        send_message("Task [[{}]] deleted".format(task.id), chat)
 
 
 def status_task(chat, status, msg):
@@ -182,7 +176,7 @@ def list_task(chat):
     for task in query.all():
         icon = ICONS[task.status]
 
-        list += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
+        list += '[[{}]] {} {} *{}*\n'.format(task.id, icon, task.name, task.priority)
         list += deps_text(task, chat)
 
     send_message(list, chat)
@@ -192,15 +186,15 @@ def list_task(chat):
     query = create_list('TODO', chat)
     list += '\n{} *TODO*\n'.format(ICONS['TODO'])
     for task in query.all():
-        list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
+        list += '[[{}]] {} *{}*\n'.format(task.id, task.name, task.priority)
     query = create_list('DOING', chat)
     list += '\n{} *DOING*\n'.format(ICONS['DOING'])
     for task in query.all():
-        list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
+        list += '[[{}]] {} *{}*\n'.format(task.id, task.name, task.priority)
     query = create_list('DONE', chat)
     list += '\n{} *DONE*\n'.format(ICONS['DONE'])
     for task in query.all():
-        list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
+        list += '[[{}]] {} *{}*\n'.format(task.id, task.name, task.priority)
 
     send_message(list, chat)
 
@@ -221,8 +215,8 @@ def dependeci_task(chat, msg):
             return
 
         if text == '':
-            for ids in task.dependencies.split(',')[:-1]:
-                ids = int(ids)
+            for i in task.dependencies.split(',')[:-1]:
+                i = int(i)
                 query = db.session.query(Task).filter_by(id=i, chat=chat)
                 tasks = query.one()
                 tasks.parents = tasks.parents.replace('{},'.format(task.id), '')
@@ -233,6 +227,12 @@ def dependeci_task(chat, msg):
             for dependeci_id in text.split(' '):
                 if not dependeci_id.isdigit():
                     send_message("All dependencies ids must be numeric, and not {}".format(dependeci_id), chat)
+                elif int(dependeci_id) == task.id:
+                    send_message("I'm sorry. Invalid operation.", chat)
+
+                elif verify_circle_referece(task.id, dependeci_id, chat):
+                    send_message("I'm sorry. This operation generates circle reference", chat)
+
                 else:
                     dependeci_id = int(dependeci_id)
                     query = db.session.query(Task).filter_by(id=dependeci_id, chat=chat)
@@ -249,6 +249,19 @@ def dependeci_task(chat, msg):
 
         db.session.commit()
         send_message("Task {} dependencies up to date".format(msg), chat)
+
+
+def verify_circle_referece(task_id, dependeci_id, chat):
+
+    task = find_id_task(str(task_id), chat)
+    if task is False:
+        return True
+    if str(dependeci_id) in task.parents.split(',')[:-1]:
+        return True
+    for i in task.parents.split(',')[:-1]:
+        if verify_circle_referece(i, dependeci_id, chat):
+            return True
+    return False
 
 
 def priority_task(chat, msg):
@@ -270,16 +283,16 @@ def priority_task(chat, msg):
                 send_message("The priority *must be* one of the following: high, medium, low", chat)
             else:
                 task.priority = text.lower()
-                send_message("*Task {}* priority has priority *{}*".format(task_id, text.lower()), chat)
+                send_message("*Task {}* priority has priority *{}*".format(task.id, text.lower()), chat)
         db.session.commit()
 
 
-def find_id_task(msg, chat):
-    if not msg.isdigit():
+def find_id_task(task_id, chat):
+    if not task_id.isdigit():
         send_message("You must inform the task id", chat)
         return False
 
-    task_id = int(msg)
+    task_id = int(task_id)
     query = db.session.query(Task).filter_by(id=task_id, chat=chat)
 
     try:
