@@ -17,9 +17,9 @@ STATUS_COMMANDS = ['/todo', '/doing', '/done']
 TOKEN = '590239234:AAHYixF3whwhw7x8XY-sgfXjBwfWRO3-pXg'
 
 ICONS = {
-    'todo': '\U0001F195',
-    'doing': '\U000023FA',
-    'done': '\U00002611',
+    'TODO': '\U0001F195',
+    'DOING': '\U000023FA',
+    'DONE': '\U00002611',
     'status': '\U0001F4DD',
     'status_list': '\U0001F4CB'
 }
@@ -87,11 +87,7 @@ def deps_text(task, chat, preceed=''):
         query = db.session.query(Task).filter_by(id=int(task.dependencies.split(',')[:-1][i]), chat=chat)
         dependeci = query.one()
 
-        icon = ICONS['todo']
-        if dependeci.status == 'DOING':
-            icon = ICONS['doing']
-        elif dependeci.status == 'DONE':
-            icon = ICONS['done']
+        icon = ICONS[dependeci.status]
 
         if i + 1 == len(task.dependencies.split(',')[:-1]):
             line += '└── [[{}]] {} {}\n'.format(dependeci.id, icon, dependeci.name)
@@ -184,11 +180,7 @@ def list_task(chat):
     query = db.session.query(Task).filter_by(parents='', chat=chat).order_by(Task.id)
 
     for task in query.all():
-        icon = ICONS['todo']
-        if task.status == 'DOING':
-            icon = ICONS['doing']
-        elif task.status == 'DONE':
-            icon = ICONS['done']
+        icon = ICONS[task.status]
 
         list += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
         list += deps_text(task, chat)
@@ -197,23 +189,24 @@ def list_task(chat):
     list = ''
 
     list += '{} _Status_\n'.format(ICONS['status_list'])
-    query = create_list('TODO',chat)
-    list += '\n{} *TODO*\n'.format(ICONS['todo'])
+    query = create_list('TODO', chat)
+    list += '\n{} *TODO*\n'.format(ICONS['TODO'])
     for task in query.all():
         list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
-    query = create_list('DOING',chat)
-    list += '\n{} *DOING*\n'.format(ICONS['doing'])
+    query = create_list('DOING', chat)
+    list += '\n{} *DOING*\n'.format(ICONS['DOING'])
     for task in query.all():
         list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
-    query = create_list('DONE',chat)
-    list += '\n{} *DONE*\n'.format(ICONS['done'])
+    query = create_list('DONE', chat)
+    list += '\n{} *DONE*\n'.format(ICONS['DONE'])
     for task in query.all():
         list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
 
     send_message(list, chat)
 
-def create_list(status,chat):
-    return db.session.query(Task).filter_by(status= status, chat=chat).order_by(Task.id)
+
+def create_list(status, chat):
+    return db.session.query(Task).filter_by(status=status, chat=chat).order_by(Task.id)
 
 
 def dependeci_task(chat, msg):
