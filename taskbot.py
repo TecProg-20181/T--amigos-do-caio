@@ -116,11 +116,7 @@ def rename_task(chat, msg):
             text = msg.split(' ', 1)[1]
         msg = msg.split(' ', 1)[0]
 
-    if not msg.isdigit():
-        send_message("You must inform the task id", chat)
-    else:
-        task_id = int(msg)
-        task = find_id_task(task_id, chat)
+        task = find_id_task(msg, chat)
 
         if task is False:
             return
@@ -135,11 +131,7 @@ def rename_task(chat, msg):
 
 
 def duplicate_task(chat, msg):
-    if not msg.isdigit():
-        send_message("You must inform the task id", chat)
-    else:
-        task_id = int(msg)
-        task = find_id_task(task_id, chat)
+        task = find_id_task(msg, chat)
 
         if task is False:
             return
@@ -158,11 +150,7 @@ def duplicate_task(chat, msg):
 
 
 def delete_task(chat, msg):
-    if not msg.isdigit():
-        send_message("You must inform the task id", chat)
-    else:
-        task_id = int(msg)
-        task = find_id_task(task_id, chat)
+        task = find_id_task(msg, chat)
 
         if task is False:
             return
@@ -177,11 +165,7 @@ def delete_task(chat, msg):
 
 
 def status_task(chat, status, msg):
-    if not msg.isdigit():
-        send_message("You must inform the task id", chat)
-    else:
-        task_id = int(msg)
-        task = find_id_task(task_id, chat)
+        task = find_id_task(msg, chat)
 
         if task is False:
             return
@@ -236,12 +220,8 @@ def dependeci_task(chat, msg):
         if len(msg.split(' ', 1)) > 1:
             text = msg.split(' ', 1)[1]
         msg = msg.split(' ', 1)[0]
+        task = find_id_task(msg, chat)
 
-    if not msg.isdigit():
-        send_message("You must inform the task id", chat)
-    else:
-        task_id = int(msg)
-        task = find_id_task(task_id, chat)
         if task is False:
             return
 
@@ -265,7 +245,7 @@ def dependeci_task(chat, msg):
                         task_dependeci = query.one()
                         task_dependeci.parents += str(task.id) + ','
                     except sqlalchemy.orm.exc.NoResultFound:
-                        send_message("_404_ Task {} not found x.x".format(depid), chat)
+                        send_message("_404_ Task {} not found x.x".format(dependeci_id), chat)
                         continue
 
                     dependeci_list = task.dependencies.split(',')
@@ -273,7 +253,7 @@ def dependeci_task(chat, msg):
                         task.dependencies += str(dependeci_id) + ','
 
         db.session.commit()
-        send_message("Task {} dependencies up to date".format(task_id), chat)
+        send_message("Task {} dependencies up to date".format(msg), chat)
 
 
 def priority_task(chat, msg):
@@ -283,11 +263,7 @@ def priority_task(chat, msg):
             text = msg.split(' ', 1)[1]
         msg = msg.split(' ', 1)[0]
 
-    if not msg.isdigit():
-        send_message("You must inform the task id", chat)
-    else:
-        task_id = int(msg)
-        task = find_id_task(task_id, chat)
+        task = find_id_task(msg, chat)
         if task is False:
             return
 
@@ -303,7 +279,13 @@ def priority_task(chat, msg):
         db.session.commit()
 
 
-def find_id_task(task_id, chat):
+def find_id_task(msg, chat):
+
+    if not msg.isdigit():
+        send_message("You must inform the task id", chat)
+        return False
+        
+    task_id = int(msg)
     query = db.session.query(Task).filter_by(id=task_id, chat=chat)
 
     try:
