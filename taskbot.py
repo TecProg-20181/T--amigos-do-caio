@@ -135,9 +135,9 @@ def duplicate_task(chat, msg):
                      parents=task.parents, priority=task.priority, duedate=task.duedate)
         db.session.add(duplicated_task)
 
-        for tasks in task.dependencies.split(',')[:-1]:
-            query = db.session.query(Task).filter_by(id=int(tasks), chat=chat)
-            tasks = query.one()
+        for i in task.dependencies.split(',')[:-1]:
+            query = db.session.query(Task).filter_by(id=int(i), chat=chat)
+            i = query.one()
             tasks.parents += '{},'.format(duplicated_task.id)
 
         db.session.commit()
@@ -150,10 +150,10 @@ def delete_task(chat, msg):
         if task is False:
             return
 
-        for tasks in task.dependencies.split(',')[:-1]:
-            query = db.session.query(Task).filter_by(id=int(tasks), chat=chat)
-            tasks = query.one()
-            tasks.parents = tasks.parents.replace('{},'.format(task.id), '')
+        for i in task.dependencies.split(',')[:-1]:
+            query = db.session.query(Task).filter_by(id=int(i), chat=chat)
+            i = query.one()
+            i.parents = i.parents.replace('{},'.format(task.id), '')
         db.session.delete(task)
         db.session.commit()
         send_message("Task [[{}]] deleted".format(task.id), chat)
