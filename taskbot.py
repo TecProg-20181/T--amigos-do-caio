@@ -14,6 +14,15 @@ import os
 
 TOKEN = '590239234:AAHYixF3whwhw7x8XY-sgfXjBwfWRO3-pXg'
 
+ICONS = {
+    'todo': '\U0001F195',
+    'doing': '\U000023FA',
+    'done': '\U00002611',
+    'status': '\U0001F4DD',
+    'status_list': '\U0001F4CB'
+}
+
+
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
 
@@ -68,7 +77,7 @@ def get_last_update_id(updates):
     return max(update_ids)
 
 
-def deps_text(task, chat, icons, preceed=''):
+def deps_text(task, chat, preceed=''):
     text = ''
 
     for i in range(len(task.dependencies.split(',')[:-1])):
@@ -76,11 +85,11 @@ def deps_text(task, chat, icons, preceed=''):
         query = db.session.query(Task).filter_by(id=int(task.dependencies.split(',')[:-1][i]), chat=chat)
         dependeci = query.one()
 
-        icon = icons['todo']
+        icon = ICONS['todo']
         if dependeci.status == 'DOING':
-            icon = icons['doing']
+            icon = ICONS['doing']
         elif dependeci.status == 'DONE':
-            icon = icons['done']
+            icon = ICONS['done']
 
         if i + 1 == len(task.dependencies.split(',')[:-1]):
             line += '└── [[{}]] {} {}\n'.format(dependeci.id, icon, dependeci.name)
@@ -166,36 +175,36 @@ def status_task(chat, status, msg):
         send_message("*{}* task [[{}]] {}".format(status, task.id, task.name), chat)
 
 
-def list_task(chat,icons):
+def list_task(chat):
     list = ''
-    list += '{} Task List\n'.format(icons['status_list'])
+    list += '{} Task List\n'.format(ICONS['status_list'])
 
     query = db.session.query(Task).filter_by(parents='', chat=chat).order_by(Task.id)
 
     for task in query.all():
-        icon = icons['todo']
+        icon = ICONS['todo']
         if task.status == 'DOING':
-            icon = icons['doing']
+            icon = ICONS['doing']
         elif task.status == 'DONE':
-            icon = icons['done']
+            icon = ICONS['done']
 
         list += '[[{}]] {} {}\n'.format(task.id, icon, task.name)
-        list += deps_text(task, chat,icons)
+        list += deps_text(task, chat)
 
     send_message(list, chat)
     list = ''
 
-    list += '{} _Status_\n'.format(icons['status_list'])
+    list += '{} _Status_\n'.format(ICONS['status_list'])
     query = db.session.query(Task).filter_by(status='TODO', chat=chat).order_by(Task.id)
-    list += '\n{} *TODO*\n'.format(icons['todo'])
+    list += '\n{} *TODO*\n'.format(ICONS['todo'])
     for task in query.all():
         list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
     query = db.session.query(Task).filter_by(status='DOING', chat=chat).order_by(Task.id)
-    list += '\n{} *DOING*\n'.format(icons['doing'])
+    list += '\n{} *DOING*\n'.format(ICONS['doing'])
     for task in query.all():
         list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
     query = db.session.query(Task).filter_by(status='DONE', chat=chat).order_by(Task.id)
-    list += '\n{} *DONE*\n'.format(icons['done'])
+    list += '\n{} *DONE*\n'.format(ICONS['done'])
     for task in query.all():
         list += '[[{}]] {} {}\n'.format(task.id, task.name, task.priority)
 
@@ -285,8 +294,6 @@ def find_id_task(msg, chat):
 
 
 def handle_updates(updates):
-    icons = {'todo':'\U0001F195','doing':'\U000023FA','done':'\U00002611','status':'\U0001F4DD','status_list': '\U0001F4CB'}
-
     for update in updates["result"]:
         if 'message' in update:
             message = update['message']
@@ -331,7 +338,7 @@ def handle_updates(updates):
             status_task(chat, status, msg)
 
         elif command == '/list':
-            list_task(chat,icons)
+            list_task(chat)
 
         elif command == '/dependson':
             dependeci_task(chat, msg)
