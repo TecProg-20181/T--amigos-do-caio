@@ -282,7 +282,6 @@ def priority_task(chat, msg):
 
 
 def find_id_task(msg, chat):
-
     if not msg.isdigit():
         send_message("You must inform the task id", chat)
         return False
@@ -298,6 +297,18 @@ def find_id_task(msg, chat):
         return False
 
 
+def extract_useful_info(message):
+    command = message["text"].split(" ", 1)[0]
+    chat = message["chat"]["id"]
+    user = message["chat"]["first_name"]
+
+    msg = ''
+    if len(message["text"].split(" ", 1)) > 1:
+        msg = message["text"].split(" ", 1)[1].strip()
+
+    return command, msg, chat, user
+
+
 def handle_updates(updates):
     for update in updates["result"]:
         if 'message' in update:
@@ -308,13 +319,7 @@ def handle_updates(updates):
             print('Can\'t process! {}'.format(update))
             return
 
-        command = message["text"].split(" ", 1)[0]
-        msg = ''
-        if len(message["text"].split(" ", 1)) > 1:
-            msg = message["text"].split(" ", 1)[1].strip()
-
-        chat = message["chat"]["id"]
-        user = message["chat"]["first_name"]
+        command, msg, chat, user = extract_useful_info(message)
 
         print(command, msg, chat)
 
