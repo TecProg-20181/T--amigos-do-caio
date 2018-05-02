@@ -12,7 +12,7 @@ from db import Task
 
 import os
 
-TOKEN = '467392153:AAG4HvjBx-bsxc0uStrYylntAFBK36Kab-A'
+TOKEN = '590239234:AAHYixF3whwhw7x8XY-sgfXjBwfWRO3-pXg'
 
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
@@ -245,7 +245,7 @@ def dependeci_task(chat, msg):
         else:
             for dependeci_id in text.split(' '):
                 if not dependeci_id.isdigit():
-                    send_message("All dependencies ids must be numeric, and not {}".format(depid), chat)
+                    send_message("All dependencies ids must be numeric, and not {}".format(dependeci_id), chat)
                 else:
                     dependeci_id = int(dependeci_id)
                     query = db.session.query(Task).filter_by(id=dependeci_id, chat=chat)
