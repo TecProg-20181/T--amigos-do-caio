@@ -12,7 +12,9 @@ from db import Task
 
 import os
 
-TOKEN = '467392153:AAG4HvjBx-bsxc0uStrYylntAFBK36Kab-A'
+STATUS_COMMANDS = ['/todo', '/doing', '/done']
+
+TOKEN = '590239234:AAHYixF3whwhw7x8XY-sgfXjBwfWRO3-pXg'
 
 ICONS = {
     'todo': '\U0001F195',
@@ -284,7 +286,7 @@ def find_id_task(msg, chat):
     if not msg.isdigit():
         send_message("You must inform the task id", chat)
         return False
-        
+
     task_id = int(msg)
     query = db.session.query(Task).filter_by(id=task_id, chat=chat)
 
@@ -328,16 +330,8 @@ def handle_updates(updates):
         elif command == '/delete':
             delete_task(chat, msg)
 
-        elif command == '/todo':
-            status = 'TODO'
-            status_task(chat, status, msg)
-
-        elif command == '/doing':
-            status = 'DOING'
-            status_task(chat, status, msg)
-
-        elif command == '/done':
-            status = 'DONE'
+        elif command in STATUS_COMMANDS:
+            status = command.replace(command, command.upper().replace('/', ''))
             status_task(chat, status, msg)
 
         elif command == '/list':
