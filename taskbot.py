@@ -22,7 +22,10 @@ ICONS = {
     'DOING': '\U000023FA',
     'DONE': '\U00002611',
     'status': '\U0001F4DD',
-    'status_list': '\U0001F4CB'
+    'status_list': '\U0001F4CB',
+    'low': '\U00002755',
+    'medium': '\U00002757',
+    'high': '\U0000203C'
 }
 
 HELP = """
@@ -189,15 +192,15 @@ def list_task(chat):
     query = create_list('TODO', chat)
     list += '\n{} *TODO*\n'.format(ICONS['TODO'])
     for task in query.all():
-        list += '[[{}]] {} *{}*\n'.format(task.id, task.name, task.priority)
+        list += '[[{}]] {} *{}* {}\n'.format(task.id, task.name, task.priority,ICONS[task.priority])
     query = create_list('DOING', chat)
     list += '\n{} *DOING*\n'.format(ICONS['DOING'])
     for task in query.all():
-        list += '[[{}]] {} *{}*\n'.format(task.id, task.name, task.priority)
+        list += '[[{}]] {} *{}* {}\n'.format(task.id, task.name, task.priority,ICONS[task.priority])
     query = create_list('DONE', chat)
     list += '\n{} *DONE*\n'.format(ICONS['DONE'])
     for task in query.all():
-        list += '[[{}]] {} *{}*\n'.format(task.id, task.name, task.priority)
+        list += '[[{}]] {} *{}* {}\n'.format(task.id, task.name, task.priority,ICONS[task.priority])
 
     send_message(list, chat)
 
@@ -285,8 +288,10 @@ def priority_task(chat, msg):
             if text.lower() not in ['high', 'medium', 'low']:
                 send_message("The priority *must be* one of the following: high, medium, low", chat)
             else:
+
                 task.priority = text.lower()
-                send_message("*Task {}* priority has priority *{}*".format(task.id, text.lower()), chat)
+                send_message("*Task {}* priority has priority *{}* {}".format(task.id, text.lower(),ICONS[task.priority]),chat)
+
         db.session.commit()
 
 
