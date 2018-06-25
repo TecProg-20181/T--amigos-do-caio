@@ -4,6 +4,7 @@ import json
 import requests
 import time
 import urllib
+from datetime import datetime
 
 import sqlalchemy
 
@@ -35,6 +36,7 @@ HELP = """
  /done ID
  /delete ID
  /list
+ /duedate ID DUEDATE{AAAA/MM/DD}
  /rename ID NOME
  /dependson ID ID...
  /duplicate ID
@@ -101,7 +103,8 @@ def deps_text(task, chat, preceed=''):
 
 
 def new_task(chat, msg):
-    task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='')
+
+    task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='', duedate=None)
     db.session.add(task)
     db.session.commit()
     send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
@@ -185,6 +188,7 @@ def list_task(chat):
         list += '[[{}]] {} {} *{}*\n'.format(task.id, icon, task.name, task.priority)
         list += deps_text(task, chat)
 
+
     send_message(list, chat)
     list = ''
 
@@ -192,21 +196,34 @@ def list_task(chat):
     query = create_list('TODO', chat)
     list += '\n{} *TODO*\n'.format(ICONS['TODO'])
     for task in query.all():
-        list += '[[{}]] {} *{}* {}\n'.format(task.id, task.name, task.priority,ICONS[task.priority])
+        duedate = duedate_to_string(task.duedate)
+        list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
     query = create_list('DOING', chat)
     list += '\n{} *DOING*\n'.format(ICONS['DOING'])
     for task in query.all():
-        list += '[[{}]] {} *{}* {}\n'.format(task.id, task.name, task.priority,ICONS[task.priority])
+        duedate = duedate_to_string(task.duedate)
+        list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
     query = create_list('DONE', chat)
     list += '\n{} *DONE*\n'.format(ICONS['DONE'])
     for task in query.all():
-        list += '[[{}]] {} *{}* {}\n'.format(task.id, task.name, task.priority,ICONS[task.priority])
+        duedate = duedate_to_string(task.duedate)
+        list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
 
     send_message(list, chat)
 
 
 def create_list(status, chat):
     return db.session.query(Task).filter_by(status=status, chat=chat).order_by(Task.id)
+
+def duedate_to_string(task_duedate):
+    if(task_duedate == None):
+        duedate = ''
+    else:
+        duedate = ''
+        duedate = task_duedate
+        duedate = duedate.strftime('%Y/%m/%d')
+
+    return duedate
 
 
 def dependeci_task(chat, msg):
@@ -328,6 +345,30 @@ def extract_useful_info(message):
 
     return command, msg, chat, user
 
+def duedate_task(chat, msg):
+    text = ''
+    if msg != '':
+        if len(msg.split(' ', 1)) > 1:
+            text = msg.split(' ', 1)[1]
+            msg = msg.split(' ', 1)[0]
+
+    task = find_id_task(msg, chat)
+    if task is False:
+        return
+
+    if text == '':
+        task.duedate = None
+        send_message("_Cleared_ duedate from task {}".format(task_id), chat)
+
+    task_id = int(msg)
+    query = db.session.query(Task).filter_by(id=task_id, chat=chat)
+    task = query.one()
+    text = text.split("/")
+
+
+    task.duedate = datetime.strptime(" ".join(text), '%Y %m %d')
+    send_message("*Task {}* due date has due date *{}*".format(task_id, task.duedate), chat)
+    db.session.commit()
 
 def handle_updates(updates):
     for update in updates["result"]:
@@ -371,6 +412,10 @@ def handle_updates(updates):
         elif command == '/start' or command == '/help':
             send_message("Here is a list of things you can do.", chat)
             send_message(HELP, chat)
+
+        elif command == '/duedate':
+            duedate_task(chat, msg)
+
 
         else:
             send_message("I'm sorry {}. I'm afraid I can't do that.".format(user), chat)
