@@ -197,17 +197,31 @@ def list_task(chat):
     list += '\n{} *TODO*\n'.format(ICONS['TODO'])
     for task in query.all():
         duedate = duedate_to_string(task.duedate)
-        list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
+
+        if(task.priority == ''):
+            list += '[[{}]] {} *{}* *{}*\n'.format(task.id, task.name,task.priority,duedate)
+        else:
+            list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
+
     query = create_list('DOING', chat)
     list += '\n{} *DOING*\n'.format(ICONS['DOING'])
     for task in query.all():
         duedate = duedate_to_string(task.duedate)
-        list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
+
+        if(task.priority == ''):
+            list += '[[{}]] {} *{}* *{}*\n'.format(task.id, task.name, task.priority,duedate)
+        else:
+            list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
+
     query = create_list('DONE', chat)
     list += '\n{} *DONE*\n'.format(ICONS['DONE'])
     for task in query.all():
         duedate = duedate_to_string(task.duedate)
-        list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
+
+        if(task.priority == ''):
+            list += '[[{}]] {} *{}* *{}*\n'.format(task.id, task.name, task.priority,duedate)
+        else:
+            list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
 
     send_message(list, chat)
 
