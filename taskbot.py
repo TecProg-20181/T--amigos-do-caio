@@ -117,6 +117,7 @@ def get_last_update_id(updates):
 
 
 def get_cleared_info(msg):
+    text = ''
     if len(msg.split(' ', 1)) > 1:
         text = msg.split(' ', 1)[1]
     msg = msg.split(' ', 1)[0]
