@@ -39,9 +39,9 @@ ICONS = {
 
 HELP = """
  /new NOME
- /todo ID
- /doing ID
- /done ID
+ /todo ID...
+ /doing ID...
+ /done ID...
  /delete ID
  /list
  /duedate ID DUEDATE{AAAA/MM/DD}
