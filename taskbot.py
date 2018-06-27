@@ -406,9 +406,12 @@ def duedate_task(chat, msg):
         return
 
     text = text.split("/")
-    task.duedate = datetime.strptime(" ".join(text), '%Y %m %d')
-    send_message("*Task {}* due date has due date *{}*".format(task_id, task.duedate), chat)
-    db.session.commit()
+    try:
+        task.duedate = datetime.strptime(" ".join(text), '%Y %m %d')
+        send_message("*Task {}* due date has due date *{}*".format(task_id, task.duedate), chat)
+        db.session.commit()
+    except ValueError:
+        send_message("The duedate format is incorrect ! Try again", chat)
 
 
 def handle_updates(updates):
