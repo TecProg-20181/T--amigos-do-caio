@@ -116,6 +116,13 @@ def get_last_update_id(updates):
     return max(update_ids)
 
 
+def get_cleared_info(msg):
+    if len(msg.split(' ', 1)) > 1:
+        text = msg.split(' ', 1)[1]
+    msg = msg.split(' ', 1)[0]
+    return msg, text
+
+
 def deps_text(task, chat, preceed=''):
     text = ''
 
@@ -151,12 +158,8 @@ def new_task(chat, msg):
 
 
 def rename_task(chat, msg):
-    text = ''
     if msg != '':
-        if len(msg.split(' ', 1)) > 1:
-            text = msg.split(' ', 1)[1]
-        msg = msg.split(' ', 1)[0]
-
+        msg, text = get_cleared_info(msg)
         task = find_id_task(msg, chat)
 
         if task is False:
@@ -172,6 +175,8 @@ def rename_task(chat, msg):
         db.session.commit()
         send_message("Task {} redefined from {} to {}".format(
                      task.id, old_text, text), chat)
+    else:
+        send_message("You must inform one id", chat)
 
 
 def duplicate_task(chat, msg):
@@ -220,15 +225,17 @@ def delete_task(chat, msg):
 
 
 def status_task(chat, status, msg):
-        task = find_id_task(msg, chat)
+        task_list = msg.split(" ")
+        for i in task_list:
+            task = find_id_task(i, chat)
 
-        if task is False:
-            return
+            if task is False:
+                return
 
-        task.status = status
-        db.session.commit()
-        send_message("*{}* task [[{}]] {}".format(status,
-                                                  task.id, task.name), chat)
+            task.status = status
+            db.session.commit()
+            send_message("*{}* task [[{}]] {}".format(status,
+                         task.id, task.name), chat)
 
 
 def list_task(chat):
@@ -304,13 +311,10 @@ def duedate_to_string(task_duedate):
 
 
 def dependeci_task(chat, msg):
-    text = ''
     if msg != '':
-        if len(msg.split(' ', 1)) > 1:
-            text = msg.split(' ', 1)[1]
-        msg = msg.split(' ', 1)[0]
-        task = find_id_task(msg, chat)
+        msg, text = get_cleared_info(msg)
 
+        task = find_id_task(msg, chat)
         if task is False:
             return
 
@@ -352,9 +356,10 @@ def dependeci_task(chat, msg):
                     dependeci_list = task.dependencies.split(',')
                     if str(dependeci_id) not in dependeci_list:
                         task.dependencies += str(dependeci_id) + ','
-
         db.session.commit()
         send_message("Task {} dependencies up to date".format(msg), chat)
+    else:
+        send_message("You must inform one id", chat)
 
 
 def verify_circle_referece(task_id, dependeci_id, chat):
@@ -370,11 +375,8 @@ def verify_circle_referece(task_id, dependeci_id, chat):
 
 
 def priority_task(chat, msg):
-    text = ''
     if msg != '':
-        if len(msg.split(' ', 1)) > 1:
-            text = msg.split(' ', 1)[1]
-        msg = msg.split(' ', 1)[0]
+        msg, text = get_cleared_info(msg)
 
         task = find_id_task(msg, chat)
         if task is False:
@@ -396,6 +398,8 @@ def priority_task(chat, msg):
                              chat)
 
         db.session.commit()
+    else:
+        send_message("You must inform one id", chat)
 
 
 def find_id_task(task_id, chat):
@@ -433,11 +437,8 @@ def extract_useful_info(message):
 
 
 def duedate_task(chat, msg):
-    text = ''
     if msg != '':
-        if len(msg.split(' ', 1)) > 1:
-            text = msg.split(' ', 1)[1]
-            msg = msg.split(' ', 1)[0]
+        msg, text = get_cleared_info(msg)
 
     task = find_id_task(msg, chat)
     if task is False:
