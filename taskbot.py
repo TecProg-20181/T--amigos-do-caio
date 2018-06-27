@@ -101,7 +101,8 @@ def get_updates(offset=None):
 
 def send_message(text, chat_id, reply_markup=None):
     text = urllib.parse.quote_plus(text)
-    url = URL + "sendMessage?text={}&chat_id={}&parse_mode=Markdown".format(text, chat_id)
+    url = URL + "sendMessage?text={}&chat_id={}&parse_mode=Markdown".format(
+          text, chat_id)
     if reply_markup:
         url += "&reply_markup={}".format(reply_markup)
     get_url(url)
@@ -120,16 +121,19 @@ def deps_text(task, chat, preceed=''):
 
     for i in range(len(task.dependencies.split(',')[:-1])):
         line = preceed
-        query = db.session.query(Task).filter_by(id=int(task.dependencies.split(',')[:-1][i]), chat=chat)
+        query = db.session.query(Task).filter_by(id=int(
+                task.dependencies.split(',')[:-1][i]), chat=chat)
         dependeci = query.one()
 
         icon = ICONS[dependeci.status]
 
         if i + 1 == len(task.dependencies.split(',')[:-1]):
-            line += '└── [[{}]] {} {}\n'.format(dependeci.id, icon, dependeci.name)
+            line += '└── [[{}]] {} {}\n'.format(
+                    dependeci.id, icon, dependeci.name)
             line += deps_text(dependeci, chat, preceed + '    ')
         else:
-            line += '├── [[{}]] {} {}\n'.format(dependeci.id, icon, dependeci.name)
+            line += '├── [[{}]] {} {}\n'.format(
+                    dependeci.id, icon, dependeci.name)
             line += deps_text(dependeci, chat, preceed + '│   ')
 
         text += line
@@ -137,10 +141,12 @@ def deps_text(task, chat, preceed=''):
 
 
 def new_task(chat, msg):
-    task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='', duedate=None)
+    task = Task(chat=chat, name=msg, status='TODO', dependencies='',
+                parents='', priority='', duedate=None)
     db.session.add(task)
     db.session.commit()
-    #make_github_issue(title=msg, body="New task *TODO* [{}] {}".format(task.id, task.name))
+    make_github_issue(title=msg, body="New task *TODO* [{}] {}".format(
+                      task.id, task.name))
     send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
 
 
@@ -155,14 +161,17 @@ def rename_task(chat, msg):
 
         if task is False:
             return
+
         if text == '':
-            send_message("You want to modify task {}, but you didn't provide any new text".format(task_id), chat)
+            send_message("You want to modify task {}, but you\
+                         didn't provide any new text".format(task.id), chat)
             return
 
         old_text = task.name
         task.name = text
         db.session.commit()
-        send_message("Task {} redefined from {} to {}".format(task.id, old_text, text), chat)
+        send_message("Task {} redefined from {} to {}".format(
+                     task.id, old_text, text), chat)
 
 
 def duplicate_task(chat, msg):
@@ -171,8 +180,11 @@ def duplicate_task(chat, msg):
         if task is False:
             return
 
-        duplicated_task = Task(chat=task.chat, name=task.name, status=task.status, dependencies=task.dependencies,
-                               parents=task.parents, priority=task.priority, duedate=task.duedate)
+        duplicated_task = Task(chat=task.chat, name=task.name,
+                               status=task.status,
+                               dependencies=task.dependencies,
+                               parents=task.parents, priority=task.priority,
+                               duedate=task.duedate)
         db.session.add(duplicated_task)
 
         for i in task.dependencies.split(',')[:-1]:
@@ -181,7 +193,8 @@ def duplicate_task(chat, msg):
             task.parents += '{},'.format(duplicated_task.id)
 
         db.session.commit()
-        send_message("New task *TODO* [[{}]] {}".format(duplicated_task.id, duplicated_task.name), chat)
+        send_message("New task *TODO* [[{}]] {}".format(
+                     duplicated_task.id, duplicated_task.name), chat)
 
 
 def delete_task(chat, msg):
@@ -198,8 +211,8 @@ def delete_task(chat, msg):
         for i in task.parents.split(',')[:-1]:
             query = db.session.query(Task).filter_by(id=int(i), chat=chat)
             temp = query.one()
-            temp.dependencies = temp.dependencies.replace('{},'.format(task.id), '')
-
+            temp.dependencies = temp.dependencies.replace('{},'.format(
+                                                          task.id), '')
 
         db.session.delete(task)
         db.session.commit()
@@ -214,20 +227,22 @@ def status_task(chat, status, msg):
 
         task.status = status
         db.session.commit()
-        send_message("*{}* task [[{}]] {}".format(status, task.id, task.name), chat)
+        send_message("*{}* task [[{}]] {}".format(status,
+                                                  task.id, task.name), chat)
 
 
 def list_task(chat):
-
     list = ''
     list += '{} Task List\n'.format(ICONS['status_list'])
 
-    query = db.session.query(Task).filter_by(parents='', chat=chat).order_by(Task.id)
+    query = db.session.query(Task).filter_by(parents='',
+                                             chat=chat).order_by(Task.id)
 
     for task in query.all():
         icon = ICONS[task.status]
 
-        list += '[[{}]] {} {} *{}*\n'.format(task.id, icon, task.name, task.priority)
+        list += '[[{}]] {} {} *{}*\n'.format(task.id, icon, task.name,
+                                             task.priority)
         list += deps_text(task, chat)
 
     send_message(list, chat)
@@ -240,9 +255,13 @@ def list_task(chat):
         duedate = duedate_to_string(task.duedate)
 
         if(task.priority == ''):
-            list += '[[{}]] {} *{}* *{}*\n'.format(task.id, task.name,task.priority,duedate)
+            list += '[[{}]] {} *{}* *{}*\n'.format(task.id, task.name,
+                                                   task.priority, duedate)
         else:
-            list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
+            list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name,
+                                                      task.priority,
+                                                      ICONS[task.priority],
+                                                      duedate)
 
     query = create_list('DOING', chat)
     list += '\n{} *DOING*\n'.format(ICONS['DOING'])
@@ -250,9 +269,13 @@ def list_task(chat):
         duedate = duedate_to_string(task.duedate)
 
         if(task.priority == ''):
-            list += '[[{}]] {} *{}* *{}*\n'.format(task.id, task.name, task.priority,duedate)
+            list += '[[{}]] {} *{}* *{}*\n'.format(task.id, task.name,
+                                                   task.priority, duedate)
         else:
-            list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
+            list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name,
+                                                      task.priority,
+                                                      ICONS[task.priority],
+                                                      duedate)
 
     query = create_list('DONE', chat)
     list += '\n{} *DONE*\n'.format(ICONS['DONE'])
@@ -260,15 +283,20 @@ def list_task(chat):
         duedate = duedate_to_string(task.duedate)
 
         if(task.priority == ''):
-            list += '[[{}]] {} *{}* *{}*\n'.format(task.id, task.name, task.priority,duedate)
+            list += '[[{}]] {} *{}* *{}*\n'.format(task.id, task.name,
+                                                   task.priority, duedate)
         else:
-            list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name, task.priority,ICONS[task.priority],duedate)
+            list += '[[{}]] {} *{}* {} *{}*\n'.format(task.id, task.name,
+                                                      task.priority,
+                                                      ICONS[task.priority],
+                                                      duedate)
 
     send_message(list, chat)
 
 
 def create_list(status, chat):
-    return db.session.query(Task).filter_by(status=status, chat=chat).order_by(Task.id)
+    return db.session.query(Task).filter_by(status=status,
+                                            chat=chat).order_by(Task.id)
 
 
 def duedate_to_string(task_duedate):
@@ -291,28 +319,34 @@ def dependeci_task(chat, msg):
                 i = int(i)
                 query = db.session.query(Task).filter_by(id=i, chat=chat)
                 tasks = query.one()
-                tasks.parents = tasks.parents.replace('{},'.format(task.id), '')
+                tasks.parents = tasks.parents.replace('{},'.format(task.id),
+                                                      '')
 
             task.dependencies = ''
-            send_message("Dependencies removed from task {}".format(task_id), chat)
+            send_message("Dependencies removed from task {}".format(task.id),
+                         chat)
         else:
             for dependeci_id in text.split(' '):
                 if not dependeci_id.isdigit():
-                    send_message("All dependencies ids must be numeric, and not {}".format(dependeci_id), chat)
+                    send_message("All dependencies ids must be numeric,\
+                                 and not {}".format(dependeci_id), chat)
                 elif int(dependeci_id) == task.id:
                     send_message("I'm sorry. Invalid operation.", chat)
 
                 elif verify_circle_referece(task.id, dependeci_id, chat):
-                    send_message("I'm sorry. This operation generates circle reference", chat)
+                    send_message("I'm sorry. This operation generates circle\
+                                 reference", chat)
 
                 else:
                     dependeci_id = int(dependeci_id)
-                    query = db.session.query(Task).filter_by(id=dependeci_id, chat=chat)
+                    query = db.session.query(Task).filter_by(id=dependeci_id,
+                                                             chat=chat)
                     try:
                         task_dependeci = query.one()
                         task_dependeci.parents += str(task.id) + ','
                     except sqlalchemy.orm.exc.NoResultFound:
-                        send_message("_404_ Task {} not found x.x".format(dependeci_id), chat)
+                        send_message("_404_ Task {} not found x.x".format(
+                                     dependeci_id), chat)
                         continue
 
                     dependeci_list = task.dependencies.split(',')
@@ -348,14 +382,18 @@ def priority_task(chat, msg):
 
         if text == '':
             task.priority = ''
-            send_message("_Cleared_ all priorities from task {}".format(task_id), chat)
+            send_message("_Cleared_ all priorities from task {}".format(
+                         task.id), chat)
         else:
             if text.lower() not in ['high', 'medium', 'low']:
-                send_message("The priority *must be* one of the following: high, medium, low", chat)
+                send_message("The priority *must be* one of the following:\
+                             high, medium, low", chat)
             else:
 
                 task.priority = text.lower()
-                send_message("*Task {}* priority has priority *{}* {}".format(task.id, text.lower(),ICONS[task.priority]),chat)
+                send_message("*Task {}* priority has priority *{}* {}".format(
+                             task.id, text.lower(), ICONS[task.priority]),
+                             chat)
 
         db.session.commit()
 
@@ -416,7 +454,8 @@ def duedate_task(chat, msg):
     text = text.split("/")
     try:
         task.duedate = datetime.strptime(" ".join(text), '%Y %m %d')
-        send_message("*Task {}* due date has due date *{}*".format(task_id, task.duedate), chat)
+        send_message("*Task {}* due date has due date *{}*".format(task_id,
+                     task.duedate), chat)
         db.session.commit()
     except ValueError:
         send_message("The duedate format is incorrect ! Try again", chat)
@@ -469,7 +508,8 @@ def handle_updates(updates):
             duedate_task(chat, msg)
 
         else:
-            send_message("I'm sorry {}. I'm afraid I can't do that.".format(user), chat)
+            send_message("I'm sorry {}. I'm afraid I can't do that.".format(
+                         user), chat)
 
 
 def main():
