@@ -58,7 +58,8 @@ def make_github_issue(title, body=None):
                                                                 REPO_NAME)
 
     headers = {
-        "Authorization": "token %s" % TOKEN,
+        "Authorization": "token %s" % GITHUB_TOKEN,
+        "Accept": "application/vnd.github.golden-comet-preview+json"
     }
 
     data = {
@@ -72,10 +73,10 @@ def make_github_issue(title, body=None):
     response = requests.request("POST", url, data=payload, headers=headers)
 
     if response.status_code == 202:
-        print 'Successfully created Issue "%s"' % title
+        print ('Successfully created Issue "%s"' % title)
     else:
-        print 'Could not create Issue "%s"' % title
-        print 'Response:', response.content
+        print ('Could not create Issue "%s"' % title)
+        print ('Response:', response.content)
 
 
 def get_url(url):
@@ -139,6 +140,7 @@ def new_task(chat, msg):
     task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='', duedate=None)
     db.session.add(task)
     db.session.commit()
+    make_github_issue(title=msg, body="New task *TODO* [{}] {}".format(task.id, task.name))
     send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
 
 
@@ -400,11 +402,10 @@ def duedate_task(chat, msg):
     if text == '':
         task.duedate = None
         send_message("_Cleared_ duedate from task {}".format(task_id), chat)
+        db.session.commit()
+        return
 
-    query = db.session.query(Task).filter_by(id=task_id, chat=chat)
-    task = query.one()
     text = text.split("/")
-
     task.duedate = datetime.strptime(" ".join(text), '%Y %m %d')
     send_message("*Task {}* due date has due date *{}*".format(task_id, task.duedate), chat)
     db.session.commit()
