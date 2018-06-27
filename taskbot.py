@@ -140,7 +140,7 @@ def new_task(chat, msg):
     task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='', duedate=None)
     db.session.add(task)
     db.session.commit()
-    make_github_issue(title=msg, body="New task *TODO* [{}] {}".format(task.id, task.name))
+    #make_github_issue(title=msg, body="New task *TODO* [{}] {}".format(task.id, task.name))
     send_message("New task *TODO* [[{}]] {}".format(task.id, task.name), chat)
 
 
@@ -192,8 +192,15 @@ def delete_task(chat, msg):
 
         for i in task.dependencies.split(',')[:-1]:
             query = db.session.query(Task).filter_by(id=int(i), chat=chat)
-            i = query.one()
-            i.parents = i.parents.replace('{},'.format(task.id), '')
+            temp = query.one()
+            temp.parents = temp.parents.replace('{},'.format(task.id), '')
+
+        for i in task.parents.split(',')[:-1]:
+            query = db.session.query(Task).filter_by(id=int(i), chat=chat)
+            temp = query.one()
+            temp.dependencies = temp.dependencies.replace('{},'.format(task.id), '')
+
+
         db.session.delete(task)
         db.session.commit()
         send_message("Task [[{}]] deleted".format(task.id), chat)
@@ -211,6 +218,7 @@ def status_task(chat, status, msg):
 
 
 def list_task(chat):
+
     list = ''
     list += '{} Task List\n'.format(ICONS['status_list'])
 
