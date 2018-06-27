@@ -14,9 +14,17 @@ from db import Task
 import os
 
 TOKEN = os.environ['SECRET_TOKEN']
+GITHUB_TOKEN = os.environ['GITHUB_TOKEN']
+USERNAME = os.environ['USERNAME']
+REPO_NAME = os.environ['REPO_NAME']
+REPO_OWNER = os.environ['REPO_OWNER']
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
-STATUS_COMMANDS = ['/todo', '/doing', '/done']
+STATUS_COMMANDS = [
+    '/todo',
+    '/doing',
+    '/done'
+]
 
 ICONS = {
     'TODO': '\U0001F195',
@@ -43,6 +51,31 @@ HELP = """
  /priority ID PRIORITY{low, medium, high}
  /help
 """
+
+
+def make_github_issue(title, body=None):
+    url = 'https://api.github.com/repos/%s/%s/import/issues' % (REPO_OWNER,
+                                                                REPO_NAME)
+
+    headers = {
+        "Authorization": "token %s" % TOKEN,
+    }
+
+    data = {
+        'issue': {
+            'title': title,
+            'body': body,
+        }
+    }
+
+    payload = json.dumps(data)
+    response = requests.request("POST", url, data=payload, headers=headers)
+
+    if response.status_code == 202:
+        print 'Successfully created Issue "%s"' % title
+    else:
+        print 'Could not create Issue "%s"' % title
+        print 'Response:', response.content
 
 
 def get_url(url):
@@ -103,7 +136,6 @@ def deps_text(task, chat, preceed=''):
 
 
 def new_task(chat, msg):
-
     task = Task(chat=chat, name=msg, status='TODO', dependencies='', parents='', priority='', duedate=None)
     db.session.add(task)
     db.session.commit()
@@ -138,13 +170,13 @@ def duplicate_task(chat, msg):
             return
 
         duplicated_task = Task(chat=task.chat, name=task.name, status=task.status, dependencies=task.dependencies,
-                     parents=task.parents, priority=task.priority, duedate=task.duedate)
+                               parents=task.parents, priority=task.priority, duedate=task.duedate)
         db.session.add(duplicated_task)
 
         for i in task.dependencies.split(',')[:-1]:
             query = db.session.query(Task).filter_by(id=int(i), chat=chat)
             i = query.one()
-            tasks.parents += '{},'.format(duplicated_task.id)
+            task.parents += '{},'.format(duplicated_task.id)
 
         db.session.commit()
         send_message("New task *TODO* [[{}]] {}".format(duplicated_task.id, duplicated_task.name), chat)
@@ -188,7 +220,6 @@ def list_task(chat):
         list += '[[{}]] {} {} *{}*\n'.format(task.id, icon, task.name, task.priority)
         list += deps_text(task, chat)
 
-
     send_message(list, chat)
     list = ''
 
@@ -229,15 +260,9 @@ def list_task(chat):
 def create_list(status, chat):
     return db.session.query(Task).filter_by(status=status, chat=chat).order_by(Task.id)
 
-def duedate_to_string(task_duedate):
-    if(task_duedate == None):
-        duedate = ''
-    else:
-        duedate = ''
-        duedate = task_duedate
-        duedate = duedate.strftime('%Y/%m/%d')
 
-    return duedate
+def duedate_to_string(task_duedate):
+    return ('' if task_duedate is None else task_duedate.strftime('%Y/%m/%d'))
 
 
 def dependeci_task(chat, msg):
@@ -289,7 +314,6 @@ def dependeci_task(chat, msg):
 
 
 def verify_circle_referece(task_id, dependeci_id, chat):
-
     task = find_id_task(str(task_id), chat)
     if task is False:
         return True
@@ -359,6 +383,7 @@ def extract_useful_info(message):
 
     return command, msg, chat, user
 
+
 def duedate_task(chat, msg):
     text = ''
     if msg != '':
@@ -370,19 +395,20 @@ def duedate_task(chat, msg):
     if task is False:
         return
 
+    task_id = int(msg)
+
     if text == '':
         task.duedate = None
         send_message("_Cleared_ duedate from task {}".format(task_id), chat)
 
-    task_id = int(msg)
     query = db.session.query(Task).filter_by(id=task_id, chat=chat)
     task = query.one()
     text = text.split("/")
 
-
     task.duedate = datetime.strptime(" ".join(text), '%Y %m %d')
     send_message("*Task {}* due date has due date *{}*".format(task_id, task.duedate), chat)
     db.session.commit()
+
 
 def handle_updates(updates):
     for update in updates["result"]:
@@ -429,7 +455,6 @@ def handle_updates(updates):
 
         elif command == '/duedate':
             duedate_task(chat, msg)
-
 
         else:
             send_message("I'm sorry {}. I'm afraid I can't do that.".format(user), chat)
