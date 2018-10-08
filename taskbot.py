@@ -222,7 +222,7 @@ def delete_task(chat, msg):
 
         db.session.delete(task)
         db.session.commit()
-        send_message("Task [[{}]] deleted".format(task.id), chat)
+        send_message("The task [[{}]] deleted".format(task.id), chat)
 
 
 def status_task(chat, status, msg):
